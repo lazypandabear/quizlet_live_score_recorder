@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quizlet Live Score Recorder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <!-- Bootstrap CSS (v4.5.2) -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    .autocomplete-list {
+      position: absolute;
+      border: 1px solid #ccc;
+      background: #fff;
+      max-height: 150px;
+      overflow-y: auto;
+      width: 100%;
+      z-index: 1000;
+    }
+    .autocomplete-item {
+      padding: 5px;
+      cursor: pointer;
+    }
+    .autocomplete-item:hover {
+      background-color: #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center mb-4">Quizlet Live Score Recorder</h1>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        Column/Header Configuration
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="columnName">Column Name:</label>
+          <input type="text" id="columnName" class="form-control" placeholder="e.g. Quiz20250325">
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        Enter Winners
+      </div>
+      <div class="card-body">
+        <!-- First Prize -->
+        <div class="mb-3" style="position: relative;">
+          <h4>First Prize (+1)</h4>
+          <div class="input-group">
+            <input type="text" class="form-control student-input" data-category="first" placeholder="Type student name">
+            <div class="input-group-append">
+              <button class="btn btn-primary add-btn" data-category="first" type="button">+</button>
+            </div>
+          </div>
+          <div class="autocomplete-list" style="display: none;"></div>
+          <ul id="first-list" class="list-group mt-2"></ul>
+        </div>
+
+        <!-- Second Prize -->
+        <div class="mb-3" style="position: relative;">
+          <h4>Second Prize (+0.5)</h4>
+          <div class="input-group">
+            <input type="text" class="form-control student-input" data-category="second" placeholder="Type student name">
+            <div class="input-group-append">
+              <button class="btn btn-primary add-btn" data-category="second" type="button">+</button>
+            </div>
+          </div>
+          <div class="autocomplete-list" style="display: none;"></div>
+          <ul id="second-list" class="list-group mt-2"></ul>
+        </div>
+
+        <!-- Third Prize -->
+        <div class="mb-3" style="position: relative;">
+          <h4>Third Prize (+0.2)</h4>
+          <div class="input-group">
+            <input type="text" class="form-control student-input" data-category="third" placeholder="Type student name">
+            <div class="input-group-append">
+              <button class="btn btn-primary add-btn" data-category="third" type="button">+</button>
+            </div>
+          </div>
+          <div class="autocomplete-list" style="display: none;"></div>
+          <ul id="third-list" class="list-group mt-2"></ul>
+        </div>
+
+        <!-- Last Place -->
+        <div class="mb-3" style="position: relative;">
+          <h4>Last Place (-0.5)</h4>
+          <div class="input-group">
+            <input type="text" class="form-control student-input" data-category="last" placeholder="Type student name">
+            <div class="input-group-append">
+              <button class="btn btn-primary add-btn" data-category="last" type="button">+</button>
+            </div>
+          </div>
+          <div class="autocomplete-list" style="display: none;"></div>
+          <ul id="last-list" class="list-group mt-2"></ul>
+        </div>
+      </div>
+    </div>
+
+    <button id="execute" class="btn btn-success btn-block mb-4">Execute</button>
+  </div>
+
+  <!-- jQuery, Popper.js, Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
+    // Object to hold student names per category
+    const results = { first: [], second: [], third: [], last: [] };
+
+    // Setup autocomplete on inputs
+    function setupAutocomplete(input, listContainer) {
+      input.addEventListener('input', async () => {
+        const query = input.value.trim();
+        if (!query) {
+          listContainer.style.display = 'none';
+          listContainer.innerHTML = '';
+          return;
+        }
+        const response = await fetch(`/autocomplete?query=${encodeURIComponent(query)}`);
+        const suggestions = await response.json();
+        listContainer.innerHTML = '';
+        if (suggestions.length === 0) {
+          listContainer.style.display = 'none';
+          return;
+        }
+        suggestions.forEach(suggestion => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = suggestion;
+          item.addEventListener('click', () => {
+            input.value = suggestion;
+            listContainer.style.display = 'none';
+            listContainer.innerHTML = '';
+          });
+          listContainer.appendChild(item);
+        });
+        listContainer.style.display = 'block';
+      });
+      input.addEventListener('blur', () => {
+        setTimeout(() => { listContainer.style.display = 'none'; }, 200);
+      });
+    }
+
+    // Add button click events
+    document.querySelectorAll('.add-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const category = btn.getAttribute('data-category');
+        const container = btn.closest('.mb-3');
+        const input = container.querySelector(`.student-input[data-category="${category}"]`);
+        const value = input.value.trim();
+        if (value) {
+          results[category].push(value);
+          const list = container.querySelector('ul');
+          const li = document.createElement('li');
+          li.textContent = value;
+          li.className = 'list-group-item';
+          list.appendChild(li);
+          input.value = '';
+        }
+      });
+    });
+
+    // Attach autocomplete to each student input
+    document.querySelectorAll('.student-input').forEach(input => {
+      const container = input.closest('.mb-3');
+      const listContainer = container.querySelector('.autocomplete-list');
+      setupAutocomplete(input, listContainer);
+    });
+
+    // Execute button event
+    document.getElementById('execute').addEventListener('click', () => {
+      const columnName = document.getElementById('columnName').value.trim();
+      if (!columnName) {
+        alert("Please enter a column/header name.");
+        return;
+      }
+      const payload = { columnName, results };
+      fetch('/update-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert("Scores updated successfully!");
+          Object.keys(results).forEach(key => results[key] = []);
+          document.querySelectorAll('ul').forEach(ul => ul.innerHTML = '');
+          document.getElementById('columnName').value = '';
+        } else {
+          alert("Error updating scores: " + data.error);
+        }
+      })
+      .catch(error => {
+        alert("Error: " + error);
+      });
+    });
+  </script>
+</body>
+</html>

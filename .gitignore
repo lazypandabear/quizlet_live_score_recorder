@@ -1,0 +1,5 @@
+credentials.json
+*.csv
+*.log
+*.pickle
+.drawio
